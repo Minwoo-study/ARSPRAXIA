@@ -88,7 +88,7 @@ from datetime import datetime, timedelta
 from natsort import natsorted
 from dateutil.parser import parse
 
-from tool import common
+from tool import common, JSONformat_handler
 
 EXCEL_INITIAL_DATE = datetime(1899, 12, 30)
 
@@ -148,12 +148,6 @@ def get_row_data(row:pandas.Series, column_name:str) -> str:
         return row[column_name]
     else:
         return ""
-
-def make_Pub_Subj(Doc_ID:str) -> str:
-    """
-    Doc_ID를 기반으로 Pub_Subj를 생성합니다.
-    """
-    return Doc_ID.split("_")[2]
 
 def main(
     source_path:pathlib.Path, 
@@ -254,9 +248,9 @@ def main(
             if len(first_row["Doc_ID"]) > 190:
                 continue
 
-            # Pub_Subj가 지정된 데이터 유형(str)이 아닌 경우 : Doc_ID를 기반으로 Pub_Subj를 생성함
+            # Pub_Subj가 지정된 데이터 유형(str)이 아닌 경우 : Doc_ID에서 값을 역산함
             if "Pub_Subj" in first_row.index and not isinstance(first_row["Pub_Subj"], str):
-                first_row["Pub_Subj"] = make_Pub_Subj(first_row["Doc_ID"])
+                first_row["Pub_Subj"] = first_row["Doc_ID"].split("_")[2]
 
             # 실질 작업 부분: 지금 작업하는 부분이 새로운 파일인지, 기존 파일인지 확인
             if current_doc_id == "" or current_doc_id != first_row["Doc_ID"]:
@@ -280,7 +274,7 @@ def main(
 
                     # 파일 저장
                     with open(result_dir(result_path, result_folder_prefix, result_folder_num) / f'{current_doc_id}.json', 'w', encoding="utf-8-sig") as f:
-                        json.dump(new_doc, f, indent=2, ensure_ascii=False)
+                        json.dump(new_doc, f, indent=4, ensure_ascii=False)
                     task_count += 1
 
                 # 초기화
@@ -330,9 +324,7 @@ def main(
             # first_row["Tokenized_Sentence"]가 str이 아닌 경우가 있음. 이 경우, Token을 공백으로 이어붙임
             if not isinstance(first_row["Tokenized_Sentence"], str):
                 data["Raw_data"] = " ".join(eval(first_row["Token"]))
-            data["Entities_list"] = tags_list
-
-            data = common.handle_tag_exceptions_in_item(data)
+            data["Entities_list"] = JSONformat_handler.handle_tag_exceptions_by_data(data["Raw_data"], tags_list)
 
             data["Entities"] = common.make_entity_data(data["Raw_data"], data["Entities_list"])
             data["NER_Count"] = len(data["Entities"])
