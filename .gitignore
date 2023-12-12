@@ -1,3 +1,9 @@
+# custom
+# Ignore everything in this directory, except the main directory
+result_storage/*
+source/*
+const/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

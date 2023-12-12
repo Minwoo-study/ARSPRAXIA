@@ -147,11 +147,13 @@ def get_row_data(row:pandas.Series, column_name:str) -> str:
     if column_name in row.index:
         return row[column_name]
     else:
-        # 조치사항 : column_name이 Pub_Subj이고 데이터가 없는 경우, Doc_ID를 기반으로 Pub_Subj를 생성함
-        if column_name == "Pub_Subj":
-            return row["Doc_ID"].split("_")[2]
-        
         return ""
+
+def make_Pub_Subj(Doc_ID:str) -> str:
+    """
+    Doc_ID를 기반으로 Pub_Subj를 생성합니다.
+    """
+    return Doc_ID.split("_")[2]
 
 def main(
     source_path:pathlib.Path, 
@@ -252,9 +254,9 @@ def main(
             if len(first_row["Doc_ID"]) > 190:
                 continue
 
-            # Pub_Subj가 지정된 데이터 유형(str)이 아닌 경우 : 오류로 간주하고 해당 값을 지움
+            # Pub_Subj가 지정된 데이터 유형(str)이 아닌 경우 : Doc_ID를 기반으로 Pub_Subj를 생성함
             if "Pub_Subj" in first_row.index and not isinstance(first_row["Pub_Subj"], str):
-                first_row.drop("Pub_Subj", inplace=True)
+                first_row["Pub_Subj"] = make_Pub_Subj(first_row["Doc_ID"])
 
             # 실질 작업 부분: 지금 작업하는 부분이 새로운 파일인지, 기존 파일인지 확인
             if current_doc_id == "" or current_doc_id != first_row["Doc_ID"]:
@@ -278,7 +280,7 @@ def main(
 
                     # 파일 저장
                     with open(result_dir(result_path, result_folder_prefix, result_folder_num) / f'{current_doc_id}.json', 'w', encoding="utf-8-sig") as f:
-                        json.dump(new_doc, f, indent=4, ensure_ascii=False)
+                        json.dump(new_doc, f, indent=2, ensure_ascii=False)
                     task_count += 1
 
                 # 초기화
