@@ -197,6 +197,56 @@ def handle_dtype_exceptions(jsonfile:dict):
 
     return jsonfile
 
+def handle_tag_exceptions_by_data(raw_data:str, entities_list:list[str]):
+    
+    raw_data_split = raw_data.split()
+    
+    # Raw_data를 split한 리스트와 Entities_list의 길이가 다른 경우 대처
+    if raw_data_split.__len__() > entities_list.__len__():
+        # 부족한 수만큼 entities_list에 추가 (맨 뒤에 추가)
+        while raw_data_split.__len__() > entities_list.__len__():
+            entities_list.append("O")
+    elif raw_data_split.__len__() < entities_list.__len__():
+        # 넘치는 수만큼 entities_list에서 제거 (맨 뒤에서부터 제거)
+        while raw_data_split.__len__() < entities_list.__len__():
+            entities_list.pop()
+    
+    # 태그 오류 대처
+    new_entities_list = []
+    memory = EntityMemory()
+    for tag in entities_list:
+
+        # 태그 수정
+        if not isinstance(tag, str): tag = DEFAULT_TAG; continue
+
+        tag = tag.strip()
+        if is_tag_duplicated(tag): tag = DEFAULT_TAG; continue
+
+        tag = re.sub(r"(Art.Craft)|ARC", "Art_Craft", tag)
+        tag = re.sub(r"mnet", "ment", tag)
+        tag = re.sub(r"ACC", "Accessories", tag)
+        tag = re.sub(r"Musical-", "Musical_", tag)
+        tag = re.sub(r"MUI", "Musical_Instruments", tag)
+        tag = re.sub(r"Cosmetics", "Cosmetic", tag)
+        # "-"와 "_"를 제외한 모든 특수문자 제거
+        tag = re.sub(r"[^\w-]", "", tag)
+
+        entity = Entity(*tag.split("-"))
+        
+        memory.append(entity)
+
+        if memory.is_full():
+            if (memory.first.is_blank() and not memory.second.is_blank()) and not memory.second.is_ending_B():
+                memory.second.ending = "B"
+            
+            if (not memory.first.is_blank() and not memory.second.is_blank()) and (memory.first.major == memory.second.major) and (not memory.first.is_ending_B() and memory.second.is_ending_B()) and (memory.first.minor != memory.second.minor):
+                memory.second.minor = memory.first.minor
+
+        new_entities_list.append(entity.string)
+    
+    return new_entities_list
+    
+
 def handle_tag_exceptions(jsonfile:dict):
     """
     태그 오류를 수정\n
@@ -206,62 +256,9 @@ def handle_tag_exceptions(jsonfile:dict):
 
     jsonfile : json 가공 파일 자체 데이터
     """
+    for item in jsonfile["data"]:
+        item["Entities_list"] = handle_tag_exceptions_by_data(item["Raw_data"], item["Entities_list"])
 
-    data = jsonfile["data"]
-
-    for item in data:
-        
-        entities_list:list[str] = item["Entities_list"]
-
-        raw_data:str = item["Raw_data"]
-
-        raw_data_split = raw_data.split()
-        
-        # Raw_data를 split한 리스트와 Entities_list의 길이가 다른 경우 대처
-        if raw_data_split.__len__() > entities_list.__len__():
-            # 부족한 수만큼 entities_list에 추가 (맨 뒤에 추가)
-            while raw_data_split.__len__() > entities_list.__len__():
-                entities_list.append("O")
-        elif raw_data_split.__len__() < entities_list.__len__():
-            # 넘치는 수만큼 entities_list에서 제거 (맨 뒤에서부터 제거)
-            while raw_data_split.__len__() < entities_list.__len__():
-                entities_list.pop()
-        
-        # 태그 오류 대처
-        new_entities_list = []
-        memory = EntityMemory()
-        for tag in entities_list:
-
-            # 태그 수정
-            if not isinstance(tag, str): tag = DEFAULT_TAG; continue
-
-            tag = tag.strip()
-            if is_tag_duplicated(tag): tag = DEFAULT_TAG; continue
-
-            tag = re.sub(r"(Art.Craft)|ARC", "Art_Craft", tag)
-            tag = re.sub(r"mnet", "ment", tag)
-            tag = re.sub(r"ACC", "Accessories", tag)
-            tag = re.sub(r"Musical-", "Musical_", tag)
-            tag = re.sub(r"MUI", "Musical_Instruments", tag)
-            tag = re.sub(r"Cosmetics", "Cosmetic", tag)
-            # "-"와 "_"를 제외한 모든 특수문자 제거
-            tag = re.sub(r"[^\w-]", "", tag)
-
-            # 걸러지지 않은 태그 형태가 발견될 경우 콘솔에 Doc_ID와 태그를 출력
-            try:
-                entity = Entity(*tag.split("-"))
-            except TypeError:
-                common.print_log(f"Doc_ID : {jsonfile['Doc_ID']}\n{tag} 태그 형태 오류 발생")
-            memory.append(entity)
-
-            if memory.is_full() and memory.first.is_blank() and not memory.second.is_blank():
-                if not memory.second.is_ending_B():
-                    memory.second.ending = "B"
-
-            new_entities_list.append(entity.string)
-
-        item["Entities_list"] = new_entities_list
-    
     return jsonfile
 
 def arrange_json_format(jsonfile:dict):
