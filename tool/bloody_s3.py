@@ -7,7 +7,7 @@
 import boto3, re
 # Resource, Bucket 데이터타입 가져오기
 from pathlib import Path
-from tool.common import print_log
+from tool.common import ConsoleLogger
 
 class Mys3:
 
@@ -72,6 +72,8 @@ class Mys3:
             ban_pattern=r"statistic"
         ):
 
+        consolelogger = ConsoleLogger()
+
         path_glob = list(self._root_path.glob(glob_pattern))
 
         entire_file_count = len(path_glob)
@@ -79,7 +81,7 @@ class Mys3:
         for file_path in path_glob:
             if re.search(ban_pattern, file_path.name): continue
             if self._report_count % self.report_interval == 0:
-                print_log(f"현재 업로드 개수 : {self._report_count} / {entire_file_count}")
+                consolelogger.print(f"현재 업로드 개수 : {self._report_count} / {entire_file_count}")
             self.upload_file(file_path)
 
     

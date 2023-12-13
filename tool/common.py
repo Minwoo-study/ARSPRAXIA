@@ -170,3 +170,22 @@ def handle_tag_exceptions_in_item(item:dict):
 
 def print_log(message:str):
     print(f"{datetime.now()}\t{message}")
+
+class ConsoleLogger:
+
+    def __init__(self):
+
+        self._timestamp = datetime.now()
+        self.print("ConsoleLogger initialized")
+
+    def calculate_timedelta(self):
+            
+        now = datetime.now()
+        delta = now - self._timestamp
+        self._timestamp = now
+
+        return delta
+
+    def print(self, message:str):
+
+        print(f"{datetime.now()} ({self.calculate_timedelta().__str__().split('.')[0]} passed)\t{message}")
