@@ -31,7 +31,7 @@ class Mys3:
         self._root_path:Path = None
         self._upload_path:str = None
         
-        self._report_interval = 1000
+        self.report_interval = 1000
         self._report_count = 0
 
     def _get_path(self, path:str|Path):
@@ -72,10 +72,14 @@ class Mys3:
             ban_pattern=r"statistic"
         ):
 
-        for file_path in self._root_path.glob(glob_pattern):
+        path_glob = list(self._root_path.glob(glob_pattern))
+
+        entire_file_count = len(path_glob)
+
+        for file_path in path_glob:
             if re.search(ban_pattern, file_path.name): continue
-            if self._report_count % self._report_interval == 0:
-                print_log(f"현재 업로드 개수 : {self._report_count}")
+            if self._report_count % self.report_interval == 0:
+                print_log(f"현재 업로드 개수 : {self._report_count} / {entire_file_count}")
             self.upload_file(file_path)
 
     
