@@ -76,7 +76,7 @@ class EntityMemory:
     """
 
     def __init__(self):
-        self._memory = []
+        self._memory:list[Entity] = []
         self._max_size = 2
 
     def append(self, entity:Entity):
@@ -88,6 +88,11 @@ class EntityMemory:
     def is_full(self):
         if len(self._memory) == self._max_size: return True
         return False
+    
+    def every_entity_is_blank(self):
+        for entity in self._memory:
+            if not entity.is_blank(): return False
+        return True
     
     def __str__(self):
         return str(self._memory)
@@ -214,7 +219,37 @@ def handle_tag_exceptions_by_data(raw_data:str, entities_list:list[str]):
     # 태그 오류 대처
     new_entities_list = []
     memory = EntityMemory()
-    for tag in entities_list:
+    for token, tag in zip(raw_data_split, entities_list):
+
+        """
+        다음 문자열 중 하나가 포함되면 태그를 O로 수정
+        ya ?
+        masih
+        drpd
+        I'm
+        W
+        Giliran
+        Mcm
+        mcm
+        dikorea
+        ML
+        diorg
+        Mew
+        ngomongin
+        Untung
+        kantor
+        gapernah
+        selkor
+        people
+        saranin
+        skincare
+        """
+
+        if token in [
+            "ya ?", "ya", "?", "masih", "drpd", "I'm", "W", "Giliran", "Mcm", "mcm", "dikorea", "ML", "diorg", "Mew", "ngomongin", "Untung", "kantor", "gapernah", "selkor", "people", "saranin", "skincare"
+        ] and tag != DEFAULT_TAG:
+            tag = DEFAULT_TAG
+            
 
         # 태그 수정
         if not isinstance(tag, str): tag = DEFAULT_TAG; continue
@@ -239,7 +274,7 @@ def handle_tag_exceptions_by_data(raw_data:str, entities_list:list[str]):
             if (memory.first.is_blank() and not memory.second.is_blank()) and not memory.second.is_ending_B():
                 memory.second.ending = "B"
             
-            if (not memory.first.is_blank() and not memory.second.is_blank()) and (memory.first.major == memory.second.major) and (not memory.first.is_ending_B() and memory.second.is_ending_B()) and (memory.first.minor != memory.second.minor):
+            if not memory.every_entity_is_blank() and (memory.first.major == memory.second.major) and (not memory.first.is_ending_B() and memory.second.is_ending_B()) and (memory.first.minor != memory.second.minor):
                 memory.second.minor = memory.first.minor
 
         new_entities_list.append(entity.string)
@@ -288,6 +323,16 @@ def arrange_json_format(jsonfile:dict):
     "Col_Date": jsonfile["Col_Date"],
     "data": jsonfile["data"]
     }
+
+def handle_NER_by_sentence(sentence:dict):
+    """
+    sentence: 메인 json 파일의 data 리스트의 각 요소
+    """
+    
+    # raw_data를 띄어쓰기 단위로 split
+    # Entities_list
+
+
 # if __name__ == "__main__":
 
 #     folder_path = Path("C:\\Users\\정진혁\\offline_main\\datas\\article_jsons\\article_0808")
