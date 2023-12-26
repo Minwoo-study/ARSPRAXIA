@@ -10,7 +10,28 @@
 
 ## depth 1
 - `tool/` : 업무에 필요한 실제 코드를 용도에 따라 분할한 파일이 모여있는 폴더
-- `const/` : `tool/` 폴더 이하의 파일은 로컬에서 돌아가기 때문에, 컴퓨터마다 이 프로젝트 폴더와 작업 대상 폴더의 절대 위치가 다름. 이 폴더의 `paths.py`를 생성해 그 경로들을 미리 적어두는 식으로 활용했음.
+- `const/` : `tool/` 폴더 이하의 파일은 로컬에서 돌아가기 때문에, 컴퓨터마다 이 프로젝트 폴더와 작업 대상 폴더의 절대 위치가 다름. 이 폴더에 로컬 환경마다 각자 `paths.py`를 생성해 그 경로들을 미리 적어두는 식으로 활용했음.
+>>> 활용예:
+```python
+from pathlib import Path
+
+CWD = Path.cwd()
+SOURCE = CWD / 'source'
+RESULT_STORAGE = CWD / 'result_storage'
+MASSIVE_RESULT_STORAGE = Path('../MassiveResultStorage')
+
+DATAS = Path("C:/Users/username/offline_main/datas")
+ARTICLE_JSONS = DATAS / 'article_jsons'
+TWITTER_JSONS = DATAS / 'twitter_jsons'
+MANUAL_CORRECT = DATAS / 'manual_correct'
+
+FINAL = DATAS / 'final'
+FINAL_ARTICLE = FINAL / 'article'
+FINAL_TWITTER = FINAL / 'twitter'
+FINAL_WIKI = FINAL / 'wiki'
+FINAL_TERKINNI = FINAL / 'terkinni'
+FINAL_KOREANA = FINAL / 'koreana'
+```
 - `source/` : 코드 테스트나 실작업을 위한 작업 대상 파일을 넣어놓는 곳.
 - `result_storage/` : 결과로 생성되는 파일의 개수가 몇백 개 단위 이하로 적을 때 활용하는, `tool/` 코드에 의한 산출물 저장소.
 
@@ -74,7 +95,7 @@
 
 하위 폴더 구조도 정확하게 복사함
 ## 12. `catch_duplicate.ipynb`
-`.xlsx`나 `.csv` 형식의 두 원천데이터 파일 세트를 비교해 서로 중복되는 `Doc_ID`가 있는지 확인하고, 서로 중복되는 `Doc_ID` 중 하나의 데이터를 삭제해 별도의 `.xlsx` 원천데이터 형식으로 파일을 merge하는 코드
+`.xlsx`나 `.csv` 형식의 두 원천데이터 파일 세트를 비교해 서로 중복되는 `Doc_ID`가 있는지 확인하고, 서로 중복되는 `Doc_ID` 중 하나의 데이터를 삭제해 별도의 `.xlsx` 원천데이터 형식으로 파일을 합치는 코드
 ## 13. `file_splitter.py`
 몇십만 개 단위의 대규모 파일을 n개(기본값은 10만) 단위로 나눠 별도의 하위 디렉토리에 옮기는 코드
 ## 14. `make_docid.py`
