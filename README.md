@@ -43,7 +43,7 @@
 }
 ```
 ## 7. `entity_extractor.py`
-대규모 `.json` NER 가공 데이터에서 NER 태깅된 개체명과 그 태그, 태깅된 위치를 추출하는 코드
+대규모 `.json` NER 가공 데이터에서 NER 태깅된 개체명과 그 태그, 태깅된 위치를 추출하는 코드. 이 코드의 결과물은 [NER Editor](https://github.com/Siadel/arspraxia_JSON_NER_Editor)를 사용할 때 필수 자료로 활용함.
 
 예시 결과:
 ```json
