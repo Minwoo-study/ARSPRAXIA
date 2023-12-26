@@ -7,15 +7,18 @@
 import boto3, re
 # Resource, Bucket 데이터타입 가져오기
 from pathlib import Path
-from tool.common import ConsoleLogger
+from tool.common import ConsoleLogger, read_json
+
+with open("const/s3_keys.json", "r") as f:
+    s3_keys = read_json(f)
 
 class Mys3:
 
-    AWS_ACCESS_KEY_ID = "CE5EF5632AE04BF4A9DF"
-    AWS_SECRET_ACCESS_KEY = "302AF00BB96F64471F2DA25E9D996CB44AF80CA3"
-    ENDPOINT_URL = "https://kr.object.gov-ncloudstorage.com"
-    REGION_NAME = "ap-northeast-2"
-    BUCKET_NAME = "aidata-2023-099-123"
+    AWS_ACCESS_KEY_ID = s3_keys["AWS_ACCESS_KEY_ID"]
+    AWS_SECRET_ACCESS_KEY = s3_keys["AWS_SECRET_ACCESS_KEY"]
+    ENDPOINT_URL = s3_keys["ENDPOINT_URL"]
+    REGION_NAME = s3_keys["REGION_NAME"]
+    BUCKET_NAME = s3_keys["BUCKET_NAME"]
 
     def __init__(self):
 

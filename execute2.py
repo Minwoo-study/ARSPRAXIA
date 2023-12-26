@@ -3,39 +3,44 @@ from natsort import natsorted
 from datetime import datetime
 from tool import common
 import json, re
+from const.paths import *
 
-CWD = Path.cwd()
-SOURCE = CWD / 'source'
-RESULT_STORAGE = CWD / 'result_storage'
-MASSIVE_RESULT_STORAGE = Path('../MassiveResultStorage')
+# JSONconverter
+from tool import JSONconverter
 
-DATAS = Path("../datas")
-ARTICLE_JSONS = DATAS / 'article_jsons'
-TWITTER_JSONS = DATAS / 'twitter_jsons'
+tasks = {
+    # "기사" : (FINAL / "article_2"),
+    "트위" : (FINAL / "twitter_1214"),
+    # "위키" : (FINAL / "wiki_"),
+}
 
-FINAL = DATAS / 'final'
-FINAL_ARTICLE = FINAL / 'article'
-FINAL_TWITTER = FINAL / 'twitter'
-FINAL_WIKI = FINAL / 'wiki'
-FINAL_TERKINNI = FINAL / 'terkinni'
-FINAL_KOREANA = FINAL / 'koreana'
+source_path = SOURCE / "JSONconverter"
+candidate_path = SOURCE / "JSONconverter_candidate"
+done_path = SOURCE / "JSONconverter_done"
 
+for keyword, result_path in tasks.items():
+    
+    # candidate_path에서 keyword를 포함한 xlsx 파일을 모두 가져온다.
+    files = natsorted([file for file in candidate_path.glob("*.xlsx") if keyword in file.name])
 
-# # JSONconverter
-# from tool import JSONconverter
-# source_path = SOURCE / "JSONconverter"
-# result_path = result_path = TWITTER_JSONS / "twitter_1205"
+    # 해당 파일들을 source_path로 옮긴다.
+    for file in files:
+        file.rename(source_path / file.name)
 
-# # 통계를 만들지 않은 파일에 작업한다면, statistic = True 가 되어 있는지 확인 
-# JSONconverter.main(source_path, result_path, statistic=True)
+    # 통계를 만들지 않은 파일에 작업한다면, statistic = True 가 되어 있는지 확인 
+    JSONconverter.main(source_path, result_path, statistic=True)
 
-# sen_token_counter
-from tool import sen_token_counter
+    # 작업이 끝난 파일들을 done_path로 옮긴다.
+    for file in source_path.glob("*.xlsx"):
+        file.rename(done_path / file.name)
 
-sen_token_counter.main(
-    ARTICLE_JSONS,
-    ARTICLE_JSONS / "entire_article_statistic.json",
-)
+# # sen_token_counter
+# from tool import sen_token_counter
+
+# sen_token_counter.main(
+#     ARTICLE_JSONS,
+#     ARTICLE_JSONS / "entire_article_statistic.json",
+# )
 
 # entity_extractor
 # from tool import entity_extractor

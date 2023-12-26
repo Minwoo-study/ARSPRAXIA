@@ -47,7 +47,11 @@ class Entity:
     ending: str = "" # "B", "I"
 
     def is_valid(self):
-        if self.major not in MAJOR_SET or self.minor not in MINOR_SET or self.ending not in ENDING_SET:
+        if self.major not in MAJOR_SET:
+            return False
+        if self.minor != "" and self.minor not in MINOR_SET:
+            return False
+        if self.ending != "" and self.ending not in ENDING_SET:
             return False
         return True
     
@@ -76,7 +80,7 @@ class EntityMemory:
     """
 
     def __init__(self):
-        self._memory:list[Entity] = []
+        self._memory = []
         self._max_size = 2
 
     def append(self, entity:Entity):
@@ -88,11 +92,6 @@ class EntityMemory:
     def is_full(self):
         if len(self._memory) == self._max_size: return True
         return False
-    
-    def every_entity_is_blank(self):
-        for entity in self._memory:
-            if not entity.is_blank(): return False
-        return True
     
     def __str__(self):
         return str(self._memory)
@@ -155,35 +154,35 @@ def correct_data_dtype(dictionary:dict, key:str):
         elif data_keys_dtype[key] == int:
             return 0
 
-def handle_format_exceptions(data:dict):
+def handle_format_exceptions(jsonfile:dict):
 
-    data = common.update_key(data, 'Raw-Data', 'Raw_data')
+    jsonfile = common.update_key(jsonfile, 'Raw-Data', 'Raw_data')
 
-    if 'Doc_ID' not in data:
-        data = common.update_key(data, 'Filename', 'Doc_ID')
+    if 'Doc_ID' not in jsonfile:
+        jsonfile = common.update_key(jsonfile, 'Filename', 'Doc_ID')
 
-    if 'Pub_Date' not in data:
-        data = common.update_key(data, 'Pub_date', 'Pub_Date')
+    if 'Pub_Date' not in jsonfile:
+        jsonfile = common.update_key(jsonfile, 'Pub_date', 'Pub_Date')
     
-    if 'Col_Date' not in data:
-        data = common.update_key(data, 'Coll_Date', 'Col_Date')
-        data = common.update_key(data, 'Coll_date', 'Col_Date')
-        data = common.update_key(data, 'Col_date', 'Col_Date')
+    if 'Col_Date' not in jsonfile:
+        jsonfile = common.update_key(jsonfile, 'Coll_Date', 'Col_Date')
+        jsonfile = common.update_key(jsonfile, 'Coll_date', 'Col_Date')
+        jsonfile = common.update_key(jsonfile, 'Col_date', 'Col_Date')
     
-    if 'Sen_ID' not in data:
-        data = common.update_key(data, 'SEN_ID', 'Sen_ID')
+    if 'Sen_ID' not in jsonfile:
+        jsonfile = common.update_key(jsonfile, 'SEN_ID', 'Sen_ID')
     
-    if 'Anno_ID' not in data:
-        data = common.update_key(data, 'ANNO_ID', 'Anno_ID')
+    if 'Anno_ID' not in jsonfile:
+        jsonfile = common.update_key(jsonfile, 'ANNO_ID', 'Anno_ID')
 
-    if 'Text' not in data:
-        text_list = [item["Raw_data"] for item in data["data"]]
-        data['Text'] = " ".join(text_list)
+    if 'Text' not in jsonfile:
+        text_list = [item["Raw_data"] for item in jsonfile["data"]]
+        jsonfile['Text'] = " ".join(text_list)
     
-    for item in data["data"]:
+    for item in jsonfile["data"]:
         if isinstance(item["Word_Count"], float): item["Word_Count"] = int(item["Word_Count"])
     
-    return data
+    return jsonfile
 
 def handle_dtype_exceptions(jsonfile:dict):
     """
@@ -202,86 +201,6 @@ def handle_dtype_exceptions(jsonfile:dict):
 
     return jsonfile
 
-def handle_tag_exceptions_by_data(raw_data:str, entities_list:list[str]):
-    
-    raw_data_split = raw_data.split()
-    
-    # Raw_data를 split한 리스트와 Entities_list의 길이가 다른 경우 대처
-    if raw_data_split.__len__() > entities_list.__len__():
-        # 부족한 수만큼 entities_list에 추가 (맨 뒤에 추가)
-        while raw_data_split.__len__() > entities_list.__len__():
-            entities_list.append("O")
-    elif raw_data_split.__len__() < entities_list.__len__():
-        # 넘치는 수만큼 entities_list에서 제거 (맨 뒤에서부터 제거)
-        while raw_data_split.__len__() < entities_list.__len__():
-            entities_list.pop()
-    
-    # 태그 오류 대처
-    new_entities_list = []
-    memory = EntityMemory()
-    for token, tag in zip(raw_data_split, entities_list):
-
-        """
-        다음 문자열 중 하나가 포함되면 태그를 O로 수정
-        ya ?
-        masih
-        drpd
-        I'm
-        W
-        Giliran
-        Mcm
-        mcm
-        dikorea
-        ML
-        diorg
-        Mew
-        ngomongin
-        Untung
-        kantor
-        gapernah
-        selkor
-        people
-        saranin
-        skincare
-        """
-
-        if token in [
-            "ya ?", "ya", "?", "masih", "drpd", "I'm", "W", "Giliran", "Mcm", "mcm", "dikorea", "ML", "diorg", "Mew", "ngomongin", "Untung", "kantor", "gapernah", "selkor", "people", "saranin", "skincare"
-        ] and tag != DEFAULT_TAG:
-            tag = DEFAULT_TAG
-            
-
-        # 태그 수정
-        if not isinstance(tag, str): tag = DEFAULT_TAG; continue
-
-        tag = tag.strip()
-        if is_tag_duplicated(tag): tag = DEFAULT_TAG; continue
-
-        tag = re.sub(r"(Art.Craft)|ARC", "Art_Craft", tag)
-        tag = re.sub(r"mnet", "ment", tag)
-        tag = re.sub(r"ACC", "Accessories", tag)
-        tag = re.sub(r"Musical-", "Musical_", tag)
-        tag = re.sub(r"MUI", "Musical_Instruments", tag)
-        tag = re.sub(r"Cosmetics", "Cosmetic", tag)
-        # "-"와 "_"를 제외한 모든 특수문자 제거
-        tag = re.sub(r"[^\w-]", "", tag)
-
-        entity = Entity(*tag.split("-"))
-        
-        memory.append(entity)
-
-        if memory.is_full():
-            if (memory.first.is_blank() and not memory.second.is_blank()) and not memory.second.is_ending_B():
-                memory.second.ending = "B"
-            
-            if not memory.every_entity_is_blank() and (memory.first.major == memory.second.major) and (not memory.first.is_ending_B() and memory.second.is_ending_B()) and (memory.first.minor != memory.second.minor):
-                memory.second.minor = memory.first.minor
-
-        new_entities_list.append(entity.string)
-    
-    return new_entities_list
-    
-
 def handle_tag_exceptions(jsonfile:dict):
     """
     태그 오류를 수정\n
@@ -291,10 +210,92 @@ def handle_tag_exceptions(jsonfile:dict):
 
     jsonfile : json 가공 파일 자체 데이터
     """
-    for item in jsonfile["data"]:
-        item["Entities_list"] = handle_tag_exceptions_by_data(item["Raw_data"], item["Entities_list"])
+
+    data = jsonfile["data"]
+
+    for item in data:
+        
+        entities_list:list[str] = item["Entities_list"]
+
+        raw_data:str = item["Raw_data"]
+
+        raw_data_split = raw_data.split()
+        
+        # Raw_data를 split한 리스트와 Entities_list의 길이가 다른 경우 대처
+        if raw_data_split.__len__() > entities_list.__len__():
+            # 부족한 수만큼 entities_list에 추가 (맨 뒤에 추가)
+            while raw_data_split.__len__() > entities_list.__len__():
+                entities_list.append("O")
+        elif raw_data_split.__len__() < entities_list.__len__():
+            # 넘치는 수만큼 entities_list에서 제거 (맨 뒤에서부터 제거)
+            while raw_data_split.__len__() < entities_list.__len__():
+                entities_list.pop()
+        
+        # 태그 오류 대처
+        new_entities_list = []
+        memory = EntityMemory()
+        for tag in entities_list:
+
+            # 태그 수정
+            if not isinstance(tag, str): tag = DEFAULT_TAG; continue
+
+            tag = tag.strip()
+            if is_tag_duplicated(tag): tag = DEFAULT_TAG; continue
+
+            tag = re.sub(r"(Art.Craft)|ARC", "Art_Craft", tag)
+            tag = re.sub(r"mnet", "ment", tag)
+            tag = re.sub(r"ACC", "Accessories", tag)
+            tag = re.sub(r"Musical-", "Musical_", tag)
+            tag = re.sub(r"MUI", "Musical_Instruments", tag)
+            tag = re.sub(r"Cosmetics", "Cosmetic", tag)
+            # "-"와 "_"를 제외한 모든 특수문자 제거
+            tag = re.sub(r"[^\w-]", "", tag)
+
+            # 걸러지지 않은 태그 형태가 발견될 경우 콘솔에 Doc_ID와 태그를 출력
+            entity = Entity(*tag.split("-"))
+            if not entity.is_valid():
+                common.print_log(f"Doc_ID : {jsonfile['Doc_ID']}\n{tag} 태그 형태 오류 발생")
+                entity = Entity(DEFAULT_TAG)
+            memory.append(entity)
+
+            if memory.is_full() and memory.first.is_blank() and not memory.second.is_blank():
+                if not memory.second.is_ending_B():
+                    memory.second.ending = "B"
+
+            new_entities_list.append(entity.string)
+
+        item["Entities_list"] = new_entities_list
+    
+    return jsonfile
+
+def handle_content_exceptions(jsonfile:dict):
+    """
+    Text : 좌우 공백이 남은 경우 오류. strip() 메소드로 좌우 공백 제거
+    Anno_ID : IN_001 등 숫자가 4자리로 끝나지 않으면 면 오류. zfill() 메소드로 숫자를 4자리로 만들기
+    한 문장에 5토큰 미만인 경우 문장 데이터 자체를 버리기 (그 문장이 문서의 마지막 문장인 경우, None 값을 반환)
+    Doc_ID, Sen_ID : <Pub_Subj> 부분과 숫자 부분 사이에 _ 문자가 없는 경우 오류. 언더바 집어넣기
+    """
+
+    jsonfile["Text"] = jsonfile["Text"].strip()
+    
+    if jsonfile["Doc_ID"][-7] != "_":
+        jsonfile["Doc_ID"] = jsonfile["Doc_ID"][:-7] + "_" + jsonfile["Doc_ID"][-7:]
+
+    for idx, item in enumerate(jsonfile["data"]):
+
+        if item["Word_Count"] < 5:
+            if jsonfile["data"].__len__() == 1:
+                return None
+            else:
+                jsonfile["data"].pop(idx)
+        
+        Anno_ID_split = item["Anno_ID"].split("_")
+        if Anno_ID_split[-1].__len__() < 4:
+            item["Anno_ID"] = "_".join(Anno_ID_split[:-1]) + "_" + Anno_ID_split[-1].zfill(4)
 
     return jsonfile
+        
+        
 
 def arrange_json_format(jsonfile:dict):
     """
@@ -323,16 +324,6 @@ def arrange_json_format(jsonfile:dict):
     "Col_Date": jsonfile["Col_Date"],
     "data": jsonfile["data"]
     }
-
-def handle_NER_by_sentence(sentence:dict):
-    """
-    sentence: 메인 json 파일의 data 리스트의 각 요소
-    """
-    
-    # raw_data를 띄어쓰기 단위로 split
-    # Entities_list
-
-
 # if __name__ == "__main__":
 
 #     folder_path = Path("C:\\Users\\정진혁\\offline_main\\datas\\article_jsons\\article_0808")

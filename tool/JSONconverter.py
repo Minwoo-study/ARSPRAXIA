@@ -126,7 +126,10 @@ def convert_date(date:datetime|float64) -> str:
     if isinstance(date, float64):
         return (EXCEL_INITIAL_DATE + timedelta(days=date)).strftime("%Y-%m-%d")
     elif isinstance(date, str):
-        return parse(date).strftime("%Y-%m-%d")
+        try:
+            return parse(date).strftime("%Y-%m-%d")
+        except:
+            return EXCEL_INITIAL_DATE.strftime("%Y-%m-%d")
     else:
         return date.strftime("%Y-%m-%d")
 
