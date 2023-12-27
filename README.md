@@ -5,11 +5,11 @@
 [NER Editor](https://github.com/Siadel/arspraxia_JSON_NER_Editor)
 
 # 폴더/파일 설명
-로컬 전용 폴더는 레포지토리에 공유되지 않지만, `.gitignore` 파일을 통해 그 존재를 확인할 수 있음.
+로컬 전용 폴더와 그 하위 파일은 레포지토리에 공유되지 않지만, `.gitignore` 파일을 통해 그 존재를 확인할 수 있음.
 - `execute` 계열 파일 : `tool/` 폴더에 있는 파이썬 파일을 불러와 그때그때 주어진 목표에 맞게 활용하는 일종의 코드 플랫폼
 - `instant` 계열 파일 : 갑자기 기억나지 않는 코드나 모듈의 세부 작동 내용을 0확인하는 차원에서 쓰는 테스트 파일
 - `tool/` : 업무에 필요한 실제 코드를 용도에 따라 분할한 파일이 모여있는 폴더
-- `const/` : 로컬 전용 폴더. `tool/` 폴더 이하의 파일은 로컬에서 돌아가기 때문에, 컴퓨터마다 이 프로젝트 폴더와 작업 대상 폴더의 절대 위치가 다름. 이 폴더에 로컬 환경마다 각자 `paths.py`를 생성해 그 경로들을 미리 적어두는 식으로 활용했음.
+- `const/` : **로컬 전용 폴더.** `tool/` 폴더 이하의 파일은 로컬에서 돌아가기 때문에, 컴퓨터마다 이 프로젝트 폴더와 작업 대상 폴더의 절대 위치가 다름. 이 폴더에 로컬 환경마다 각자 `paths.py`를 생성해 그 경로들을 미리 적어두는 식으로 활용했음. 또, 공유하기 곤란한 Openai API key나 S3 secret key 같은 경우 이 폴더에 따로 `.json` 형식 파일을 만들어 저장하고, 이 폴더에서 그 파일의 정보를 불러오는 식으로 활용했음.
 ```python
 # paths.py 예시
 from pathlib import Path
@@ -42,10 +42,18 @@ some_module.some_task(
     result_path = FINAL_ARTICLE
 )
 ```
-- `source/` : 로컬 전용 폴더. 코드 테스트나 실작업을 위한 작업 대상 파일을 넣어놓는 곳.
-- `result_storage/` : 로컬 전용 폴더. 결과로 생성되는 파일의 개수가 몇백 개 단위 이하로 적을 때 활용하는, `tool/` 코드에 의한 산출물 저장소.
+```python
+# 키 파일 활용예
+import json
+from box import Box
+
+keys = Box(json.load(open("const/sample_keys.json", "r", encoding="utf-8")))
+print(keys.important_key) # >>> samplekeyABCD123456
+```
+- `source/` : **로컬 전용 폴더.** 코드 테스트나 실작업을 위한 작업 대상 파일을 넣어놓는 곳.
+- `result_storage/` : **로컬 전용 폴더.** 결과로 생성되는 파일의 개수가 몇백 개 단위 이하로 적을 때 활용하는, `tool/` 코드에 의한 산출물 저장소.
 ## `arspraxia_assistant.ipynb`
-회사에서 결제한 
+Openai API 회사 계정으로 GPT-4를 활용해 업무 자동화를 하기 위해 작성한, 코드 상의 AI 대화 플랫폼.
 
 # `tool/` 이하의 파일 설명 (주관적 중요도 순)
 ## 1. `common.py`
@@ -112,5 +120,3 @@ some_module.some_task(
 몇십만 개 단위의 대규모 파일을 n개(기본값은 10만) 단위로 나눠 별도의 하위 디렉토리에 옮기는 코드
 ## 14. `make_docid.py`
 `JSONconverter.py` 관련 작업을 수행하다가 맞닥뜨린 대규모 원천 파일의 오류를 교정하기 위해 특수 제작한 코드로, 상실된 `Doc_ID` 컬럼을 `Sen_ID` 컬럼을 이용해 재구성하는 코드
-## 15. `datetime_test.py`
-`datetime` 모듈 관련 테스트 코드. 원래는 `instant.ipynb`에 있어야 하지만, 작업 노하우가 부족했던 당시에 만들었고, 미처 삭제할 시간이 없어 일종의 더미 코드로 남게 됨.
