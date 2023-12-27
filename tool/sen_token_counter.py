@@ -5,6 +5,16 @@ from tool.common import ConsoleLogger
 
 # target_dir = Path("C:\\Users\\정진혁\\Ars Praxia\\[T] 23-05-001 NIA AI 데이터셋 구축 - General\\06-수집데이터\\가공 완료 데이터\\가공 완료 데이터 종합(바로잡음)")
 
+def pubtype_classify(pubtype:str) -> str:
+    if pubtype in ["Newspaper", "Newsdata", "Koreana"]:
+        return "Newspaper"
+    elif pubtype == "SNS":
+        return "SNS"
+    elif pubtype in ["wikipedia", "terkinni"]:
+        return "Others"
+    else:
+        return "Others"
+
 def main(target_folder:Path, result_file_path:str|Path, *,report_interval:int=10000, tag_count:bool=False, tag_by_PubType:bool=False):
 
     cl = ConsoleLogger()
@@ -48,7 +58,7 @@ def main(target_folder:Path, result_file_path:str|Path, *,report_interval:int=10
                         result["tags"][tag] += 1
             
             elif tag_count and tag_by_PubType:
-                pubType = json_data["Pub_Type"]
+                pubType = pubtype_classify(data["PubType"])
                 if pubType not in result["tags"]:
                     result["tags"][pubType] = dict()
                 for entity in data["Entities"]:
