@@ -9,7 +9,7 @@ YMDHMS_FILENAME = "%Y%m%d_%H%M%S"
 DUPLICATED_TAG_PATTERN = re.compile(r"(PS)|(PD)|(WA)|(BO)|(LC)|(EV)")
 DEFAULT_TAG = "O"
 
-
+DEFAULT_ENCODING = "utf-8-sig"
 
 def is_tag_duplicated(tag:str):
 
@@ -123,69 +123,76 @@ def str_to_path(path:str|Path) -> Path:
         raise TypeError(f"str_to_path() argument must be str or Path, not {type(path).__name__}")
     return Path(path) if isinstance(path, str) else path
 
-def handle_tag_exceptions_in_item(item:dict):
+# def handle_tag_exceptions_in_item(item:dict):
 
-    entities_list:list[str] = item["Entities_list"]
+#     entities_list:list[str] = item["Entities_list"]
 
-    # Raw_data가 str이 아닌 경우 오류로 인해 데이터가 비어있는 것 -> 빈 문자열로 대체
-    if not isinstance(item["Raw_data"], str):
-        item["Raw_data"] = ""
+#     # Raw_data가 str이 아닌 경우 오류로 인해 데이터가 비어있는 것 -> 빈 문자열로 대체
+#     if not isinstance(item["Raw_data"], str):
+#         item["Raw_data"] = ""
 
-    raw_data:str = item["Raw_data"]
+#     raw_data:str = item["Raw_data"]
 
-    raw_data_split = raw_data.split()
+#     raw_data_split = raw_data.split()
     
-    # Raw_data를 split한 리스트와 Entities_list의 길이가 다른 경우 대처
-    if raw_data_split.__len__() > entities_list.__len__():
-        # 부족한 수만큼 entities_list에 추가 (맨 뒤에 추가)
-        while raw_data_split.__len__() > entities_list.__len__():
-            entities_list.append("O")
-    elif raw_data_split.__len__() < entities_list.__len__():
-        # 넘치는 수만큼 entities_list에서 제거 (맨 뒤에서부터 제거)
-        while raw_data_split.__len__() < entities_list.__len__():
-            entities_list.pop()
+#     # Raw_data를 split한 리스트와 Entities_list의 길이가 다른 경우 대처
+#     if raw_data_split.__len__() > entities_list.__len__():
+#         # 부족한 수만큼 entities_list에 추가 (맨 뒤에 추가)
+#         while raw_data_split.__len__() > entities_list.__len__():
+#             entities_list.append("O")
+#     elif raw_data_split.__len__() < entities_list.__len__():
+#         # 넘치는 수만큼 entities_list에서 제거 (맨 뒤에서부터 제거)
+#         while raw_data_split.__len__() < entities_list.__len__():
+#             entities_list.pop()
     
-    # 태그 오류 대처
-    new_entities_list = []
-    for tag in entities_list:
-        if not isinstance(tag, str): tag = DEFAULT_TAG; continue
+#     # 태그 오류 대처
+#     new_entities_list = []
+#     for tag in entities_list:
+#         if not isinstance(tag, str): tag = DEFAULT_TAG; continue
 
-        tag = tag.strip()
-        if is_tag_duplicated(tag): tag = DEFAULT_TAG; continue
+#         tag = tag.strip()
+#         if is_tag_duplicated(tag): tag = DEFAULT_TAG; continue
 
-        # 발견된 오류 수정
-        tag = re.sub(r"(Art.Craft)|ARC", "Art_Craft", tag)
-        tag = re.sub(r"mnet", "ment", tag)
-        tag = re.sub(r"ACC", "Accessories", tag)
-        tag = re.sub(r"Musical-", "Musical_", tag)
-        tag = re.sub(r"MUI", "Musical_Instruments", tag)
-        tag = re.sub(r"Cosmetics", "Cosmetic", tag)
-        # "-"와 "_"를 제외한 모든 특수문자 제거
-        tag = re.sub(r"[^\w-]", "", tag)
+#         # 발견된 오류 수정
+#         tag = re.sub(r"(Art.Craft)|ARC", "Art_Craft", tag)
+#         tag = re.sub(r"mnet", "ment", tag)
+#         tag = re.sub(r"ACC", "Accessories", tag)
+#         tag = re.sub(r"Musical-", "Musical_", tag)
+#         tag = re.sub(r"MUI", "Musical_Instruments", tag)
+#         tag = re.sub(r"Cosmetics", "Cosmetic", tag)
+#         # "-"와 "_"를 제외한 모든 특수문자 제거
+#         tag = re.sub(r"[^\w-]", "", tag)
 
-        new_entities_list.append(tag)
-    item["Entities_list"] = new_entities_list
+#         new_entities_list.append(tag)
+#     item["Entities_list"] = new_entities_list
 
-    return item
+#     return item
+
+
 
 def print_log(message:str):
     print(f"{datetime.now()}\t{message}")
-
+    
 class ConsoleLogger:
-
-    def __init__(self):
-
+    
+    def __init__(self, initial_message:bool = False):
+        
         self._timestamp = datetime.now()
-        self.print("ConsoleLogger initialized")
-
+        
+        if initial_message:
+            self.print("ConsoleLogger Initialized")
+        
+    def now(self):
+        return datetime.now().strftime("%H:%M:%S") + "\t"
+    
     def calculate_timedelta(self):
-            
         now = datetime.now()
         delta = now - self._timestamp
         self._timestamp = now
-
+        
         return delta
-
+    
     def print(self, message:str):
+        
+        print(f"{self.now()}(+{self.calculate_timedelta().__str__().split('.')[0]})\t{message}")
 
-        print(f"{datetime.now()} ({self.calculate_timedelta().__str__().split('.')[0]} passed)\t{message}")

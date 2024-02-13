@@ -42,7 +42,7 @@ Column2 ~ : Token 데이터를 NER화한 것
     "Pub_Type": "Newspaper",
     "Pub_Subj": "Korea",
     "Pub_date": "2021-01-01",
-    "Coll_date": "2023-08-08",
+    "Col_date": "2023-08-08",
     "data": [
         ...
     ]
@@ -50,10 +50,10 @@ Column2 ~ : Token 데이터를 NER화한 것
 
 data에 들어갈 dict 형식
 {
-    "SEN_ID": "20230808_newsdata_Korea_007413_sen000001",
+    "Sen_ID": "20230808_newsdata_Korea_007413_sen000001",
     "Word_Count": 10,
     "NER_Count": 1,
-    "ANNO_ID": "IN_001",
+    "Anno_ID": "IN_001",
     "Raw_data": "Kang Daniel telah menjadi wajah baru dari merek kecantikan .",
     "Entities_list": [
         "PS-Name-B",
@@ -126,10 +126,7 @@ def convert_date(date:datetime|float64) -> str:
     if isinstance(date, float64):
         return (EXCEL_INITIAL_DATE + timedelta(days=date)).strftime("%Y-%m-%d")
     elif isinstance(date, str):
-        try:
-            return parse(date).strftime("%Y-%m-%d")
-        except:
-            return EXCEL_INITIAL_DATE.strftime("%Y-%m-%d")
+        return parse(date).strftime("%Y-%m-%d")
     else:
         return date.strftime("%Y-%m-%d")
 
@@ -139,8 +136,7 @@ def result_dir(result_path:pathlib.Path, result_folder_prefix:str, result_folder
     """
     return result_path / f'{result_folder_prefix}_{result_folder_number}'
 
-def now():
-    return datetime.now().strftime("%H:%M:%S") + "\t"
+
 
 def get_row_data(row:pandas.Series, column_name:str) -> str:
     """
@@ -151,6 +147,12 @@ def get_row_data(row:pandas.Series, column_name:str) -> str:
         return row[column_name]
     else:
         return ""
+
+def make_Pub_Subj(Doc_ID:str) -> str:
+    """
+    Doc_ID를 기반으로 Pub_Subj를 생성합니다.
+    """
+    return Doc_ID.split("_")[2]
 
 def main(
     source_path:pathlib.Path, 
@@ -171,6 +173,8 @@ def main(
     file_scale : 파일을 몇 개씩 묶어서 저장할 것인지 (기본: 10만개 단위)\n
     statistic : 파일 수, 문장 수, 토큰 수 합산 통계 json 파일을 result_path에 저장할 것인지 (기본: False)\n
     """
+    
+    logger = common.ConsoleLogger()
 
     if not source_path.exists(): raise FileNotFoundError(f"{source_path}가 존재하지 않습니다.")
 
@@ -202,11 +206,11 @@ def main(
         if file_seq > task_limit:
             break
 
-        print(f'{now()}Processing {file_seq} / {task_limit}')
+        logger.print(f'Processing {source_file} {file_seq} / {task_limit}')
 
         df = pandas.read_excel(source_file)
         
-        print(f'{now()}{source_file.name} converted to dataframe')
+        logger.print(f'{source_file.name} converted to dataframe')
 
         new_file = False
 
@@ -216,8 +220,13 @@ def main(
             # 두 번째 행의 열 중 Column2(인덱스 14)부터 끝까지 가져옴
             # nan 제외하고 가져오기
             # 이 정보를 리스트로 변환
+            
             try:
-                first_row = df.iloc[i].dropna()
+                
+                # first_row = df.iloc[i].dropna()
+                # first_row= first_row.replace(r'^\s*$', "'", regex=True)
+                first_row = df.iloc[i].fillna("'")
+                # token_list = df.iloc[i, 13:]
                 tags_list = df.iloc[i + 1, 13:]
 
             except IndexError:
@@ -229,7 +238,7 @@ def main(
             # 이 경우, first_row와 대조하여 데이터가 없는 위치에 "O"를 삽입함
             # 그 뒤 dropna().tolist()를 통해 리스트로 변환
             if "O" not in tags_list.tolist():
-                for tag_idx, col in enumerate(first_row[14:]):
+                for tag_idx, col in enumerate(first_row[13:]):
                     if pandas.isna(tags_list.iloc[tag_idx]):
                         tags_list.iloc[tag_idx] = "O"
             tags_list = tags_list.dropna().tolist()
@@ -251,9 +260,9 @@ def main(
             if len(first_row["Doc_ID"]) > 190:
                 continue
 
-            # Pub_Subj가 지정된 데이터 유형(str)이 아닌 경우 : Doc_ID에서 값을 역산함
+            # Pub_Subj가 지정된 데이터 유형(str)이 아닌 경우 : Doc_ID를 기반으로 Pub_Subj를 생성함
             if "Pub_Subj" in first_row.index and not isinstance(first_row["Pub_Subj"], str):
-                first_row["Pub_Subj"] = first_row["Doc_ID"].split("_")[2]
+                first_row["Pub_Subj"] = make_Pub_Subj(first_row["Doc_ID"])
 
             # 실질 작업 부분: 지금 작업하는 부분이 새로운 파일인지, 기존 파일인지 확인
             if current_doc_id == "" or current_doc_id != first_row["Doc_ID"]:
@@ -273,11 +282,18 @@ def main(
                         result_folder_num += 1
                         result_dir(result_path, result_folder_prefix, result_folder_num).mkdir(exist_ok=True)
 
-                        print(f"{now()}{result_folder_num}번 폴더 생성")
+                        logger.print(f"{result_path}에 {result_folder_num}번 폴더 생성")
+                    
+                    # 오류 조치, 파일 데이터 순서 재배열
+                    new_doc = JSONformat_handler.handle_format_exceptions(new_doc)
+                    new_doc = JSONformat_handler.handle_dtype_exceptions(new_doc)
+                    new_doc = JSONformat_handler.handle_tag_exceptions(new_doc)
+                    new_doc = JSONformat_handler.handle_content_exceptions(new_doc)
+                    new_doc = JSONformat_handler.arrange_json_format(new_doc)
 
                     # 파일 저장
-                    with open(result_dir(result_path, result_folder_prefix, result_folder_num) / f'{current_doc_id}.json', 'w', encoding="utf-8-sig") as f:
-                        json.dump(new_doc, f, indent=4, ensure_ascii=False)
+                    with open(result_dir(result_path, result_folder_prefix, result_folder_num) / f'{current_doc_id}.json', 'w', encoding=common.DEFAULT_ENCODING) as f:
+                        json.dump(new_doc, f, indent=2, ensure_ascii=False)
                     task_count += 1
 
                 # 초기화
@@ -312,9 +328,9 @@ def main(
 
                 elif "terkinni" in new_doc["Pub_Subj"].lower():
                     new_doc["Pub_Type"] = "Terkinni"
-                    # new_doc["Doc_ID"].replace("newsdata", "terkinni")
-                    # # Doc_ID로 파일명 변경
-                    # current_doc_id = new_doc["Doc_ID"]
+                    new_doc["Doc_ID"].replace("newsdata", "terkinni")
+                    # Doc_ID로 파일명 변경
+                    current_doc_id = new_doc["Doc_ID"]
             
             # 새 파일 혹은 기존 파일에 작업할 때: data 리스트에 추가할 dict 생성
             data = {}
@@ -322,16 +338,13 @@ def main(
             data["Sen_ID"] = first_row["Sen_ID"]
             data["Word_Count"] = int(first_row["Word_Count"])
             data["NER_Count"] = 0 # 미리 선언
-            data["Anno_ID"] = "IN_001"
-            data["Raw_data"] = first_row["Tokenized_Sentence"]
-            # first_row["Tokenized_Sentence"]가 str이 아닌 경우가 있음. 이 경우, Token을 공백으로 이어붙임
-            if not isinstance(first_row["Tokenized_Sentence"], str):
-                data["Raw_data"] = " ".join(eval(first_row["Token"]))
-            data["Entities_list"] = JSONformat_handler.handle_tag_exceptions_by_data(data["Raw_data"], tags_list)
+            data["Anno_ID"] = "IN_0001"
+            data["Raw_data"] = " ".join([str(element) for element in first_row[13:]])
+            data["Entities_list"] = tags_list
 
             data["Entities"] = common.make_entity_data(data["Raw_data"], data["Entities_list"])
             data["NER_Count"] = len(data["Entities"])
-
+            
             new_doc["data"].append(data)
 
             sentence_count += 1
@@ -344,4 +357,6 @@ def main(
         statistic_dict["total_tokens"] = token_count
         with open(result_path / "statistic.json", 'w', encoding="utf-8") as f:
             json.dump(statistic_dict, f, indent=2, ensure_ascii=False)
+            
+    logger.print(f"{result_path}이하 폴더에 json 파일 생성 완료")
 

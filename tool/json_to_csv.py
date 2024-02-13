@@ -123,7 +123,7 @@ def main(
     result_file_start_num:int=1,
     file_scale:int=50000,
     max_token:int=None,
-    encoding:str="utf-8-sig",
+    encoding:str=common.DEFAULT_ENCODING,
     ban_pattern:str = r"statistic"
 ):
     target_path.mkdir(parents=True, exist_ok=True)
@@ -174,7 +174,7 @@ def main(
                 result_file_num += 1
                 task_count = 0
 
-            json_file = json.load(json_file_path.open(encoding="utf-8-sig"))
+            json_file = json.load(json_file_path.open(encoding=common.DEFAULT_ENCODING))
 
             for data in json_file["data"]:
 

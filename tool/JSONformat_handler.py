@@ -1,4 +1,4 @@
-import re
+import re, json, unicodedata
 from collections import OrderedDict
 from pathlib import Path
 from dataclasses import dataclass
@@ -12,8 +12,7 @@ metadata_keys_dtype = {
     "Pub_Type": str,
     "Pub_Subj": str,
     "Pub_Date": str,
-    "Col_Date": str,
-    "Sen_ID": str
+    "Col_Date": str
 }
 
 data_keys_dtype = {
@@ -38,7 +37,30 @@ ENDING_SET = {"B", "I"}
 DUPLICATED_TAG_PATTERN = re.compile(r"(PS)|(PD)|(WA)|(BO)|(LC)|(EV)")
 DEFAULT_TAG = "O"
 
+DIACRITICS_MAP = {
+    'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'å': 'a',
+    'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
+    'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
+    'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o', 'ø': 'o',
+    'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+    'ý': 'y', 'ÿ': 'y',
+    'ç': 'c', 'ñ': 'n',
+    'Á': 'A', 'À': 'A', 'Â': 'A', 'Ä': 'A', 'Ã': 'A', 'Å': 'A',
+    'É': 'E', 'È': 'E', 'Ê': 'E', 'Ë': 'E',
+    'Í': 'I', 'Ì': 'I', 'Î': 'I', 'Ï': 'I',
+    'Ó': 'O', 'Ò': 'O', 'Ô': 'O', 'Ö': 'O', 'Õ': 'O', 'Ø': 'O',
+    'Ú': 'U', 'Ù': 'U', 'Û': 'U', 'Ü': 'U',
+    'Ý': 'Y',
+    'Ç': 'C', 'Ñ': 'N'
+}
 
+# Dictionary mapping common Latin ligatures to their decompositions
+LIGATURE_MAP:dict[str, str] = {
+    'æ': 'ae',
+    'œ': 'oe',
+    'ß': 'ss',  # German sharp s
+    # Add more mappings as needed
+}
 
 @dataclass
 class Entity:
@@ -109,7 +131,30 @@ class EntityMemory:
     @property
     def second(self) -> Entity:
         return self._memory[1]
+
+def remove_diacritics(text:str) -> str:
+    # Replace characters in the input string based on the diacritics_map
+    for diac, basic in DIACRITICS_MAP.items():
+        text = text.replace(diac, basic)
     
+    return text
+
+def split_latin_ligatures(text:str) -> str:
+
+    # Replace each ligature in the text with its decomposition
+    for ligature, decomposition in LIGATURE_MAP.items():
+        text = text.replace(ligature, decomposition)
+    
+    return text
+
+def remove_duplicates_keep_order(lst):
+    result = []
+    seen = set()
+    for item in lst:
+        if item not in seen:
+            seen.add(item)
+            result.append(item)
+    return result
 
 def is_tag_duplicated(tag:str):
 
@@ -275,12 +320,55 @@ def handle_content_exceptions(jsonfile:dict):
     한 문장에 5토큰 미만인 경우 문장 데이터 자체를 버리기 (그 문장이 문서의 마지막 문장인 경우, None 값을 반환)
     Doc_ID, Sen_ID : <Pub_Subj> 부분과 숫자 부분 사이에 _ 문자가 없는 경우 오류. 언더바 집어넣기
     """
+    
+    # 파일 전체를 문자열로 변환한 뒤 다이어크리틱 제거, 로마자 합자 변환
+    jsonfile_string = json.dumps(jsonfile, ensure_ascii=False)
+    jsonfile_string = remove_diacritics(jsonfile_string)
+    jsonfile_string = split_latin_ligatures(jsonfile_string)
+    jsonfile = json.loads(jsonfile_string)
+    
+    title = jsonfile['Title']
+    # regex_pattern = r'[A-Za-z0-9 !@#$%^&*()_+{}[\]\―\:;<>,"‘’”“\'.°=?~`/-]+'
 
+    new_title = re.sub(r'[^A-Za-z0-9 !@#$%^&*()_+{}[\]\―\:;<>,"‘’”“\'.?~`/-]+', '', title)
+    jsonfile['Title']=new_title
+    
+    pub_subj = jsonfile['Pub_Subj']
+    new_subj = re.sub(r'[^A-Za-z0-9 !@#$%^&*()_+{}[\]\―\:;<>,"‘’”“\'.?~`/-]+', '', pub_subj)
+    new_subj = new_subj.replace('/', '_')
+    
+    if "wikidata" in jsonfile["Doc_ID"]: # 위키 데이터에 한해 특수하게 적용
+        new_subj = "_".join(remove_duplicates_keep_order(new_subj.split("_"))) # 중복되는 부분 제거
+        if new_subj.__len__() > 100: new_subj = new_subj[:100].strip() # 100자 이상인 경우 자르기
+    
+    jsonfile['Pub_Subj'] = new_subj
+    
     jsonfile["Text"] = jsonfile["Text"].strip()
     
-    if jsonfile["Doc_ID"][-7] != "_":
-        jsonfile["Doc_ID"] = jsonfile["Doc_ID"][:-7] + "_" + jsonfile["Doc_ID"][-7:]
+    if jsonfile["Pub_Type"] == "Koreana": jsonfile["Pub_Type"] = "Newspaper"
 
+    # if 'twitter' == jsonfile['Doc_ID'].split("_")[1]:
+    #     # Sen_ID에서 _sen 부분을 지우고 숫자 앞의 언더바 가져오기
+    #     sen_id_parts:list = jsonfile["data"][0]["Sen_ID"].split("_")[:-2]
+    #     new_doc_id_suffix =  jsonfile["data"][0]["Sen_ID"].split("_")[-2]
+
+    #     # 새로운 Doc_ID 생성
+    #     matches = re.match(r"([a-zA-Z ]+)([0-9]+)", new_doc_id_suffix)
+    #     if matches:
+    #         # 영문 부분과 숫자 부분 추출
+    #         letters_part = matches.group(1)
+    #         numbers_part = matches.group(2)
+    #         numbers_part = numbers_part
+
+    #     else:
+    #         print(f"{new_doc_id_suffix} 일치하는 패턴이 없습니다.")
+            
+    #     sen_id_parts.append(letters_part)
+    #     sen_id_parts.append(numbers_part)
+    
+    doc_id_split = jsonfile["Doc_ID"].split("_")
+    jsonfile['Doc_ID']='_'.join(doc_id_split[:2])+"_"+jsonfile["Pub_Subj"] + "_" + doc_id_split[-1].zfill(7)
+      
     for idx, item in enumerate(jsonfile["data"]):
 
         if item["Word_Count"] < 5:
@@ -291,10 +379,14 @@ def handle_content_exceptions(jsonfile:dict):
         
         Anno_ID_split = item["Anno_ID"].split("_")
         if Anno_ID_split[-1].__len__() < 4:
-            item["Anno_ID"] = "_".join(Anno_ID_split[:-1]) + "_" + Anno_ID_split[-1].zfill(4)
-
+            item["Anno_ID"] = '_'.join(Anno_ID_split[:-1]) + "_" + Anno_ID_split[-1].zfill(4)
+        #새로운 Sen_ID 부여    
+        sen_id=item['Sen_ID'].split('_')[-1]
+        new_sen_id = jsonfile['Doc_ID']+'_'+sen_id
+        item['Sen_ID']=new_sen_id
+        item["Raw_data"] = item["Raw_data"].strip()
+    
     return jsonfile
-        
         
 
 def arrange_json_format(jsonfile:dict):

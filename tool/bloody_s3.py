@@ -71,7 +71,7 @@ class Mys3:
 
     def upload_massive_files(
             self, 
-            glob_pattern="**/*.json", 
+            glob_pattern="*.csv", 
             ban_pattern=r"statistic"
         ):
 

@@ -3,6 +3,9 @@
 result_storage/*
 source/*
 const/*
+beta/*
+execute.ipynb
+execute2.py
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
